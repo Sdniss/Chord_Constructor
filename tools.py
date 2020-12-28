@@ -43,31 +43,44 @@ class ChordGenerator:
                                  'Cb': ['Cb', 'Db', 'Eb', 'Fb', 'Gb', 'Ab', 'Bb']  # Alternative form
                                  }
 
-        # Chord names dictionary. A chord is associated with the difference compared to a major (1,3,5) chord
+        # Chord names dictionary. A chord is associated with the difference compared to its regular major-scale form
+        # Note: '6th add 9' is mentioned separately in an if statement
+        # Source: https://fretsource-guitar.weebly.com/chord-construction.html
         self.chord_names_dict = {'Major': [0,0,0],  # 3 Notes
                                  'Minor': [0,-1,0],
                                  'Diminished': [0,-1,-1],
                                  'Augmented': [0,0,1],
                                  'Suspended 4th': [0,1,0],
                                  'Suspended 2nd': [0,-2,0],
-                                 'Dominant 7th': [0,0,0,-1],  # 4 Notes
+                                 'Dominant 7th': [0,0,0,-1],            # 4 Notes
                                  'Minor 7th': [0, -1, 0, -1],
                                  'Major 7th': [0,0,0,0],
                                  'Diminished 7th': [0,-1,-1,-2],
                                  'Half Diminished 7th': [0,-1,-1,-1],
                                  '6th': [0,0,0,0],
                                  'Minor 6th': [0,-1,0,0],
-                                 '6X_1': [0,-1,0,-1],  # Could be 'm6b'. Actually inverted version of maj7 in another key!
-                                 '6X_2': [0,-1,-1,-1]
+                                 'Added 9th': [0,0,0,0],
+                                 '7th sharp 5': [0, 0, 1, -1],
+                                 '7th flat 5': [0, 0, -1, -1],
+                                 '9th': [0,0,0,-1,0],                   # 5 Notes
+                                 'Minor 9th': [0,-1,0,-1,0],
+                                 'Major 9th': [0,0,0,0,0],
+                                 '7th sharp 9': [0,0,0,-1,1],
+                                 '7th flat 9': [0,0,0,-1,-1],
+                                 '11th': [0,0,0,-1,0,0],                # 6 Notes
+                                 'Minor 11th': [0,-1,0,-1,0,0],
+                                 '7th sharp 11th': [0,0,0,-1,0,1],
+                                 '13th': [0,0,0,-1,0,0,0],              # 7 Notes
+                                 'Minor 13th': [0,-1,0,-1,0,0,0]
                                  }
 
         # Initiations of variables that are generated with the functions
         self.chords_dict = None
 
     def get_chords(self, chord_length = '3-4'):
-        """
-        Source: https://fretsource-guitar.weebly.com/chord-construction.html
+        """ Get all chords with prespecified lengths
 
+        :param chord_length: str, lengths (int) separated by '-'. E.g.: '3-4-5'
         :return: adds "chords" to the object, a dict with chord name (key) and the notes (values)
         """
 
@@ -104,7 +117,7 @@ class ChordGenerator:
 
                 # Get the notes inside the mode chord and fill up to 7 with NaN
                 mode_chord = rolled_mode_scale_repeated[chord_positions]
-                nan_tail = [np.nan]*(7-len(mode_chord))
+                nan_tail = ['']*(7-len(mode_chord))
                 mode_chord = np.hstack([mode_chord, nan_tail])
 
                 # Get appendable item
@@ -201,17 +214,25 @@ def _construct_chord_dict(chord_diff_code, mode_chord, chord_positions, chord_na
     :param chord_names_dict: dict, keys are the extension of the chord (E.g. 'augmented'), values are chord_diff_code
     :return: dict, keys: chord name (the note + extension (E.g. 'C_Major')), values: the notes inside the chord
     """
+    # Get the root note
+    note = mode_chord[0]
 
     # Search code up in dict and get name. (we can't use .get() since we look up value instead of key)
     for name, value in chord_names_dict.items():
         if value == list(chord_diff_code):
-            # E.g. [0,0,0,0] occurs for a 1,3,5,6 and 1,3,5,7 chord.
+
+            # One odd chord (6th added 9) that is necessary to mention on it's own
+            if chord_positions[-2]+1 == 6 and chord_positions[-1]+1 == 9:
+                return {f'{note}_6th added 9': list(mode_chord)}
+
+            # E.g. [0,0,0,0] occurs for a 1,3,5,6 (6h) - 1,3,5,7 (Maj 7th) - 1,3,5,9 (Add 9) chord.
             # To get the correct one, the last value should be in the name. Hence the if statement.
             if len(chord_diff_code) >= 4 and str(chord_positions[-1]+1) not in name:
                 continue
-            chord_notes = np.array(mode_chord)
-            note = mode_chord[0]
-            return {f'{note}_{name}': list(chord_notes)}
+            return {f'{note}_{name}': list(mode_chord)}
+
+    # If chord wasn't found, return f'{note}_Unknown'
+    return {f'{note}_Unknown': list(mode_chord)}
 
 
 def _get_chord_positions(chord_length):
@@ -222,7 +243,10 @@ def _get_chord_positions(chord_length):
     """
     # Initialize dictionary with the chord positions
     positions_dict = {'3': [[0, 2, 4]],
-                      '4': [[0, 2, 4, 5], [0, 2, 4, 6]]
+                      '4': [[0, 2, 4, 5], [0, 2, 4, 6], [0, 2, 4, 8]],
+                      '5': [[0, 2, 4, 5, 8], [0, 2, 4, 6, 8]],
+                      '6': [[0,2,4,6,8,10]],
+                      '7': [[0,2,4,6,8,10,12]]
                       }  # For intuition: read this with +1 --> [0,2,4]: [1,3,5].
 
     # Get the keys for the dictionary
