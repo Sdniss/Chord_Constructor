@@ -1,4 +1,6 @@
 import numpy as np
+import os
+from midiutil import MIDIFile
 
 # Use this reference for interpretation of modes etc: https://bandnotes.info/tidbits/tidbits-feb.htm
 
@@ -12,6 +14,7 @@ class ChordGenerator:
         """
         self.key = key
         self.mode = church_mode
+        self.resource = 'https://feelyoursound.com/scale-chords/'
 
         # 2 types of chromatic scales, one with sharps and one with flats
         self.chromatic_sharps = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -126,13 +129,64 @@ class ChordGenerator:
 
         self.chords_dict = chords_dict
 
-    def generate_midi_sample(self):
-        pass
+    def generate_midi_samples(self):
+        """ Generate midi samples for mode and chords
+
+        :return: saves all midi samples in a self-generated folder in relative path: 'output/midi/{mode}/'
+        """
+        # Get chromatic scale coupled with midi notes, rolled so that root note comes first
+        chromatic_note_dict = _get_chromatic_midi_dict(self.key, self.mode_chromatic)
+
+        # Extract mode notes from chromatic dict
+        mode_note_dict = _mode_notes_from_chromatic(chromatic_note_dict, self.mode_scale)
+
+        # Create folder in the output folder
+        new_folder_path = f'{os.getcwd()}/output/midi/{self.key}_{self.mode}'
+        print(new_folder_path)
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path)
+
+        # Generate Midi for the scale. time and tempo in beats, tempo in BPM, volume 0-127 as per MIDI standard
+        MyMIDI = MIDIFile(1)  # One track, defaults to format 1 (tempo track is created automatically)
+        MyMIDI.addTempo(0, 0, 60)
+
+        for time, (note, pitch) in enumerate(mode_note_dict.items()):  # Add every note in a for loop
+            MyMIDI.addNote(0, 0, pitch, time, 1, 100)
+
+        with open(f"{new_folder_path}/{self.key}_{self.mode}.mid", "wb") as output_file:  # Write the midi file
+            MyMIDI.writeFile(output_file)
+
+        # Create midi for all possible chords
+        for chord_name, chord in self.chords_dict.items():
+            chord = [note for note in chord if note != '']  # Remove empty instances
+
+            # Get chromatic scale coupled with midi notes, rolled so that root note comes first
+            note = chord[0]
+            if note in ['F', 'A#', 'Bb', 'D#', 'Eb', 'G#', 'Ab', 'Db', 'Gb', 'Cb']:
+                chromatic = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+            else:
+                chromatic = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+            chromatic_note_dict = _get_chromatic_midi_dict(note, chromatic)
+
+            # Extract chord notes from chromatic dict
+            chord_note_dict = _mode_notes_from_chromatic(chromatic_note_dict, chord)
+
+            # Generate Midi for the chord. time and tempo in beats, tempo in BPM, volume 0-127 as per MIDI standard
+            MyMIDI = MIDIFile(1)  # One track, defaults to format 1 (tempo track is created automatically)
+            MyMIDI.addTempo(0, 0, 60)
+
+            for time, (note, pitch) in enumerate(chord_note_dict.items()):  # Add every note in a for loop
+                # Here, time set to zero so all notes play on same time, duration for 4 bars instead of 1 bar per note
+                MyMIDI.addNote(0, 0, pitch, 0, 4, 100)
+
+            with open(f"{new_folder_path}/{chord_name}.mid", "wb") as output_file:  # Write the midi file
+                MyMIDI.writeFile(output_file)
 
     def get_info(self):
         pass
 
 
+# Internal functions
 def _get_mode_scale(mode, mode_chromatic):
     """ Get a list of notes that are in the mode
 
@@ -258,3 +312,55 @@ def _get_chord_positions(chord_length):
         all_positions.extend(positions_dict.get(chord_length))
 
     return all_positions
+
+
+def _get_chromatic_midi_dict(key, chromatic):
+    """ Create a dict wherein chromatic scale is coupled with midi notes. Root note is the first key
+
+    :param chromatic: list, chromatic scale according with the mode (flats or sharps)
+    :param key: str, e.g. 'C', 'F#', 'Bb'
+    :return: dict
+    """
+
+    # Roll chromatic scale back so that C appears first
+    chromatic = list(chromatic)
+    chromatic = list(np.roll(chromatic, -chromatic.index('C')))
+
+    # Couple chromatic scale with the midi notes
+    midi_notes = range(60, 72)  # MIDI note number
+    chromatic_note_dict = dict(zip(chromatic, midi_notes))
+
+    # Get the note corresponding with the key of the mode
+    root_midi_note = chromatic_note_dict.get(key)
+
+    # Create chromatic midi_notes vector from the root note onwards
+    midi_notes = range(root_midi_note, root_midi_note + 12)
+
+    # Roll the chromatic scale
+    rolled_chromatic = np.roll(chromatic, -chromatic.index(key))
+
+    # Combine together in final dictionary
+    chromatic_note_dict = dict(zip(rolled_chromatic, midi_notes))
+
+    return chromatic_note_dict
+
+
+def _mode_notes_from_chromatic(big_dict, mode_scale):
+    """ Get a subset of the big dictionary
+
+    :param big_dict: dict, total dictionary with all keys and values
+    :param mode_scale: list, the notes inside the mode
+    :return: subset of the big dictionary
+    """
+    sub_dict = {}
+    for key, value in big_dict.items():
+        if '/' in key:
+            for Note in key.split('/'):
+                if Note in mode_scale:
+                    sub_dict.update({Note: value})
+        else:
+            Note = key
+            if Note in mode_scale:
+                sub_dict.update({Note: value})
+
+    return sub_dict
