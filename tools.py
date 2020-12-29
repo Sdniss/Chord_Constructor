@@ -208,7 +208,7 @@ class ChordGenerator:
         sharps_flats_list = [re.findall('[#|b]', note)[0] if re.findall('[#|b]', note) else '' for note in self.mode_scale]
 
         # Plot mode
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots()  # Default size = (8,6)
         for x_pos, y_pos, sharp_flat in zip(range(1,1 + len(note_positions)), note_positions, sharps_flats_list):
             ax.scatter(x_pos, y_pos, color = 'k', s= 500)
             ax.text(x_pos+0.2, y_pos+0.2, sharp_flat, fontdict = {'size': 20})
@@ -217,7 +217,7 @@ class ChordGenerator:
         for y_pos in [2, 4, 6, 8, 10]:  # Bar lines
             ax.axhline(y = y_pos, color = 'k')
 
-        ax.set_title(f'{self.key} {self.mode}')
+        ax.set_title(f'{self.key} {self.mode}', fontdict = {'size': 30})
         plt.axis('off')
         fig.savefig(f'{new_folder_path}/{self.key}_{self.mode}.png')
         plt.close()
@@ -255,7 +255,7 @@ class ChordGenerator:
             for y_pos in [2, 4, 6, 8, 10]:  # Bar lines
                 ax.axhline(y=y_pos, color='k')
 
-            ax.set_title(chord_name)
+            ax.set_title(chord_name, fontdict = {'size': 30})
             plt.axis('off')
             fig.savefig(f'{new_folder_path}/{chord_name}.png')
             plt.close()

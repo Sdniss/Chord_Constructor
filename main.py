@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 from tools import ChordGenerator, PDF
 
 # Initiate object and call desired methods
@@ -28,4 +29,8 @@ pdf.add_figure(f'{chord_generator.figures_path}/{chord_generator.key}_{chord_gen
 pdf.write_text(f'{chord_generator.key}_{chord_generator.mode}: {str(chord_generator.mode_scale)}')
 pdf.write_header('Chord Table', 1)
 pdf.add_table(chords_df)
+chord_figures = os.listdir(chord_generator.figures_path)
+chord_figures.sort()
+for fig in chord_figures:
+    pdf.add_figure(f'{chord_generator.figures_path}/{fig}')
 pdf.save(path = 'output/')
